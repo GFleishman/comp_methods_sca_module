@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import matplotlib
+matplotlib.use('TKAgg')
+from matplotlib import pyplot as plt
 from scipy.optimize import minimize
 
 
@@ -28,7 +31,7 @@ x = np.concatenate((x, y, lam))                 # all coords and lams now in x
 # SET UP OPTIMIZATION OPTIONS
 optim_method = 'BFGS'
 # method options: 'SLSQP'
-#                 'nelder-mead'  # 
+#                 'nelder-mead' 
 #                 'BFGS'
 # END: SET UP OPTIMIZATION OPTIONS
 
@@ -64,11 +67,24 @@ def lagrangian(x, mu):
 # END: DEFINE LAGRANGIAN
 
 
+# DEFINE FUNCTION TO DISPLAY OPTIMIZATION ITERATIONS
+fig = plt.figure('Optimization Progress')
+def display_iteration(xi):
+    plt.clf()
+    plt.plot(xi[:N-2], xi[N-2:2*(N-2)], '-o')
+    plt.axis('equal')
+    plt.pause(.001)
+    plt.draw()
+# END: DEFINE FUNCTION TO DISPLAY OPTIMIZATION ITERATIONS
+
+
 # RUN OPTIMIZATION
 for i in range(iterations):
     solution = minimize(lagrangian, x, args=(mu,),
                         method=optim_method,
-                        options={'maxiter': 200})
+                        options={'maxiter': 200,
+                                 'disp': True},
+                        callback=display_iteration)
     x = solution.x
     constraint_eqs = link_distances(x) - dl
     # update lams according to augmented Lagrangian method update rule
@@ -78,24 +94,10 @@ for i in range(iterations):
 # END: RUN OPTIMIZATION
 
 
-# ANALYTICAL SOLUTION
-# coefficients here correspond to the endpoints and chain length
-
-# END: ANALYTICAL SOLUTION
-
-
 # REPORT RESULTS
-import matplotlib.pyplot as plt
-print(solution)
-fig = plt.figure()
-x_ = np.array([A[0]] + list(solution.x[:N-2]) + [B[0]])
-y_ = np.array([A[1]] + list(solution.x[N-2:2*(N-2)]) + [B[1]])
-plt.plot(x_, y_, '-o')
+plt.clf()
+plt.plot(x[:N-2], x[N-2:2*(N-2)], '-o')
 plt.axis('equal')
 plt.show()
 # END: REPORT RESULTS
 # END SCRIPT
-
-# nelder-mead, penalty term only, lagrange multipliers not allowed to optimize,
-# just initialized at 1, and cut down by augmented lagrangian formula each iter
-# mu initialized at 2, updated by x2 each time, g = 1, enpoints, 01, 11
