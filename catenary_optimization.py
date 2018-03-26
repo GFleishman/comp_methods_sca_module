@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 from scipy.optimize import minimize
 
 
-# DEFINE CONVENIENCE FUNCTIONS
+# DEFINE CONVENIENCE FUNCTIONS.
 def l2_norm(x1, y1, x2, y2):
     return (x2 - x1)**2 + (y2 - y1)**2
 # END: DEFINE CONVENIENCE FUNCTIONS
@@ -115,3 +115,4 @@ plt.plot(solution.x[:N], solution.x[N:], '-o')
 plt.axis('equal')
 plt.show()
 # END: PLOT FINAL SOLUTION
+# END SCRIPT
