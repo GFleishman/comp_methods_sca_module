@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import matplotlib
+matplotlib.use('TKAgg')
+from matplotlib import pyplot as plt
 from scipy.optimize import minimize
 
 
@@ -68,7 +71,7 @@ if optim_options['first-order']:
         cons[i]['jac'] = lambda x, i=i: np.concatenate(
                                         (np.roll(diff, i)*(x[i+1]-x[i]),
                                          np.roll(diff, i)*(x[N+i+1]-x[N+i])))
-    # fixed endpoint constrant gradients
+    # fixed endpoint constraint gradients
     delta = np.zeros(2*N)
     delta[0] = 1
     cons[-4]['jac'] = lambda x: delta
@@ -78,24 +81,37 @@ if optim_options['first-order']:
 # END: DEFINE FIRST ORDER DERIVATIVES
 
 
+# DEFINE FUNCTION TO DISPLAY OPTIMIZATION ITERATIONS
+fig = plt.figure('Optimization Progress')
+def display_iteration(xi):
+    plt.clf()
+    plt.plot(xi[:N], xi[N:], '-o')
+    plt.axis('equal')
+    plt.pause(.001)
+    plt.draw()
+# END: DEFINE FUNCTION TO DISPLAY OPTIMIZATION ITERATIONS
+
+
 # RUN OPTIMIZATION
 if optim_options['SLSQP'] and not optim_options['first-order']:
     solution = minimize(potential, x, method='SLSQP',
                         constraints=cons,
-                        options={'maxiter': 200})
+                        options={'maxiter': 200,
+                                 'disp': True},
+                        callback=display_iteration)
 if optim_options['SLSQP'] and optim_options['first-order']:
     solution = minimize(potential, x, method='SLSQP',
                         jac=potential_grad,
                         constraints=cons,
-                        options={'maxiter': 200})
+                        options={'maxiter': 200,
+                                 'disp': True},
+                        callback=display_iteration)
 # END: RUN OPTIMIZATION
 
-# REPORT RESULTS
-import matplotlib.pyplot as plt
-print(solution)
-fig = plt.figure()
+
+# PLOT FINAL SOLUTION
+plt.clf()
 plt.plot(solution.x[:N], solution.x[N:], '-o')
 plt.axis('equal')
 plt.show()
-# END: REPORT RESULTS
-# END SCRIPT
+# END: PLOT FINAL SOLUTION
