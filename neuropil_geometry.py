@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+This script computes the surface area, volume, and Willmore energy a triangular
+mesh surface. The Willmore energy requires the principal curvatures at each
+vertex. The principal curvatures are the eigenvectors/eigenvalues of the
+second fundamental form matrix: an nxn (where n is the intrinsic dimension
+of the surface) matrix that captures all information regarding local curvature
+properties. I use the algorithm in:
+Szymon Rusinkiewicz, "Estimating Curvatures and Their Derivatives on Triangle
+Meshes" which (as of 03/27/2018) can be found here:
+http://gfx.cs.princeton.edu/pubs/_2004_ECA/curvpaper.pdf
+"""
 
 
 import argparse
@@ -11,20 +22,17 @@ import numpy as np
 import math
 
 
-# command line interface options
-desc = """
-Compute the discrete Willmore energy, volume, and surface area
-of a mesh file. Write the mesh file out with Gaussian curvature
-scalar field at every vertex.
-"""
-mandatory_arglist = ['mesh_input_path',
-                     'mesh_output_path']
-mandatory_helplist = ['path to input mesh file',
-                      'where to write the output mesh']
-
-
 def parse_inputs():
     """Reads in the command line arguments using argparse module"""
+    desc = """
+    Compute the discrete Willmore energy, volume, and surface area
+    of a mesh file. Write the mesh file out with Gaussian curvature
+    scalar field at every vertex.
+    """
+    mandatory_arglist = ['mesh_input_path',
+                         'mesh_output_path']
+    mandatory_helplist = ['path to input mesh file',
+                          'where to write the output mesh']
     parser = argparse.ArgumentParser(description=desc)
     for x in list(zip(mandatory_arglist, mandatory_helplist)):
         parser.add_argument(x[0], help=x[1])
@@ -32,8 +40,7 @@ def parse_inputs():
 
 
 def rotation_matrix(axis, theta):
-    """
-    Return the rotation matrix associated with counterclockwise rotation about
+    """Return the rotation matrix associated with counterclockwise rotation about
     the given axis by theta radians.
     """
     axis = np.asarray(axis)
@@ -126,7 +133,7 @@ def estimate_2FF_at_faces(faces, edges, faces_e1, faces_e2, vert_normals):
     for i, face in enumerate(faces):
         dm = populate_dummy_matrix(dm, edge_diffs[i])
         faces_2FF[i] = np.linalg.lstsq(dm, norm_diffs[i], rcond=None)[0]
-    return edge_diffs, norm_diffs, faces_2FF
+    return faces_2FF
 
 
 def estimate_2FF_at_vertices(verts, faces, face_areas, faces_2FF,
@@ -246,25 +253,39 @@ def write_output(neuropil, verts, faces, vert_principal_curvatures, args):
 
 
 def main():
+    """The main control flow through the script:
+    load the mesh, compute and store some reused essentials, compute
+    orthonormal coordinate systems at each face and vertex, estimate
+    second fundamental forms at each face and vertex, compute outputs,
+    write .vtp file to visually inspect results"""
     args = parse_inputs()
-    neuropil, verts, faces = load_mesh(args.mesh_input_path)
+
+    a = load_mesh(args.mesh_input_path)
+    neuropil = a[0]
+    verts = a[1]
+    faces = a[2]
+
     edges = compute_edge_lengths(verts, faces)
-    face_normals, face_areas, faces_e1, faces_e2 = compute_face_properties(verts,
-                                                                           faces,
-                                                                           edges)
-    vert_normals, verts_e1, verts_e2 = compute_vertex_properties(verts, faces,
-                                                                 face_normals,
-                                                                 face_areas)
-    edge_diffs, norm_diffs, faces_2FF = estimate_2FF_at_faces(faces, edges,
-                                                              faces_e1,
-                                                              faces_e2,
-                                                              vert_normals)
+
+    a = compute_face_properties(verts, faces, edges)
+    face_normals = a[0]
+    face_areas = a[1]
+    faces_e1 = a[2]
+    faces_e2 = a[3]
+
+    a = compute_vertex_properties(verts, faces, face_normals, face_areas)
+    vert_normals = a[0]
+    verts_e1 = a[1]
+    verts_e2 = a[2]
+
+    faces_2FF = estimate_2FF_at_faces(faces, edges, faces_e1, faces_e2, vert_normals)
     verts_2FF = estimate_2FF_at_vertices(verts, faces, face_areas, faces_2FF,
-                                 face_normals, faces_e1, faces_e2,
-                                 vert_normals, verts_e1, verts_e2)
-    vert_principal_curvatures = compute_and_print_outputs(verts, faces,
-                                                          face_areas, verts_2FF)
-    write_output(neuropil, verts, faces, vert_principal_curvatures, args)
+                                         face_normals, faces_e1, faces_e2,
+                                         vert_normals, verts_e1, verts_e2)
+
+    vert_principal_curvs = compute_and_print_outputs(verts, faces,
+                                                     face_areas, verts_2FF)
+    write_output(neuropil, verts, faces, vert_principal_curvs, args)
 
 
 if __name__ == '__main__':
